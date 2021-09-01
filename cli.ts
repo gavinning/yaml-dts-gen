@@ -1,30 +1,39 @@
-import * as fs from "fs";
-import * as yaml from "js-yaml";
-import { Project } from "ts-morph";
+import * as fs from 'fs'
+import asp from '@4a/asp'
+import { load } from 'js-yaml'
+import { extname } from 'path'
+import { Project } from 'ts-morph'
 
 function gen(filename: string) {
-  const content = fs.readFileSync(filename, { encoding: "utf-8" });
-  const parsedYaml = yaml.safeLoad(content);
-  const defaultExportedJson = `export default ${JSON.stringify(
-    parsedYaml,
-    null,
-    2
-  )} as const;`;
+    const content = fs.readFileSync(filename, { encoding: 'utf-8' })
+    const parsedYaml = load(content)
+    const defaultExportedJson = `export default ${JSON.stringify(
+        parsedYaml,
+        null,
+        2
+    )} as const;`
 
-  const project = new Project({
-    compilerOptions: {
-      declaration: true,
-      emitDeclarationOnly: true,
-    },
-  });
-  project.createSourceFile(
-    filename.replace(".yml", ".ts"),
-    defaultExportedJson,
-    { overwrite: true }
-  );
-  project.emitSync();
+    const project = new Project({
+        compilerOptions: {
+            declaration: true,
+            emitDeclarationOnly: true,
+        },
+    })
+    project.createSourceFile(
+        filename.replace(extname(filename), '.ts'),
+        defaultExportedJson,
+        { overwrite: true }
+    )
+    project.emitSync()
+
+    if (process.argv.includes('--debug')) {
+        asp.debug(filename, '=>', filename.replace(extname(filename), '.d.ts'))
+    }
 }
 
 export const run = async () => {
-  gen(process.argv[2]);
-};
+    process.argv
+        .slice(2)
+        .filter(file => file.match(/\.(yml|yaml)$/))
+        .map(file => gen(file))
+}
